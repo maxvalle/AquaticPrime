@@ -2,7 +2,7 @@
 // LicenseController.m
 // AquaticPrime Developer
 //
-// Copyright (c) 2005, Lucas Newman
+// Copyright (c) 2005-2011, Lucas Newman and other contributors
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification,
@@ -37,13 +37,16 @@
 
 - (id)init
 {
-	keyArray = [[NSMutableArray array] retain];
-	valueArray = [[NSMutableArray array] retain];
+	self = [super init];
+	if(self) {
+		keyArray = [[NSMutableArray array] retain];
+		valueArray = [[NSMutableArray array] retain];
+		
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(newProductSelected) name:@"ProductSelected" object:nil];
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveLicenseTemplate:) name:@"ProductWillBeSelected" object:nil];
+	}
 	
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(newProductSelected) name:@"ProductSelected" object:nil];
-	[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(saveLicenseTemplate:) name:@"ProductWillBeSelected" object:nil];
-
-	return [super init];
+	return self;
 }
  
 - (void)dealloc
@@ -77,10 +80,10 @@
 	{
 		// The support path leads to a file! Bad! This shouldn't happen ever!!
 		if (!isDir)
-			[fm removeFileAtPath:supportDir handler:nil];
+			[fm removeItemAtPath:supportDir error:NULL];
 		
 		// Create the ~/Library/Application Support/Aquatic/ directory
-		[fm createDirectoryAtPath:supportDir attributes:nil];
+		[fm createDirectoryAtPath:supportDir withIntermediateDirectories:YES attributes:nil error:NULL];
 	}
 
 	// The ~/Library/Application Support/Aquatic/Generated Licenses folder doesn't exist yet
@@ -88,10 +91,10 @@
 	{
 		// The licenses path leads to a file! Bad! This shouldn't happen ever!!
 		if (!isDir)
-			[fm removeFileAtPath:licenseDir handler:nil];
+			[fm removeItemAtPath:licenseDir error:NULL];
 			
 		// Create the product key directory
-		[fm createDirectoryAtPath:licenseDir attributes:nil];
+		[fm createDirectoryAtPath:licenseDir withIntermediateDirectories:YES attributes:nil error:NULL];
 	}
 	
 	NSMutableDictionary *licenseDict = [NSMutableDictionary dictionaryWithObjects:valueArray forKeys:keyArray];
@@ -116,10 +119,11 @@
 - (void)saveLicenseTemplate:(id)anObject
 {	
 	// Make sure the object is a tableView
-	int index;
+	int index = -1;
 	if ([anObject respondsToSelector:@selector(object)] && [[anObject object] respondsToSelector:@selector(selectedRow)])
 		index = [[anObject object] selectedRow];
-	else
+
+	if (index < 0)
 		return;
 	
 	NSFileManager *fm = [NSFileManager defaultManager];
@@ -139,10 +143,10 @@
 	{
 		// The support path leads to a file! Bad! This shouldn't happen ever!!
 		if (!isDir)
-			[fm removeFileAtPath:supportDir handler:nil];
+			[fm removeItemAtPath:supportDir error:NULL];
 		
 		// Create the ~/Library/Application Support/Aquatic/ directory
-		[fm createDirectoryAtPath:supportDir attributes:nil];
+		[fm createDirectoryAtPath:supportDir withIntermediateDirectories:YES attributes:nil error:NULL];
 	}
 	
 	// The ~/Library/Application Support/Aquatic/License Templates folder doesn't exist yet
@@ -150,10 +154,10 @@
 	{
 		// The template path leads to a file! Bad! This shouldn't happen ever!!
 		if (!isDir)
-			[fm removeFileAtPath:templateDir handler:nil];
+			[fm removeItemAtPath:templateDir error:NULL];
 			
 		// Create the product key directory
-		[fm createDirectoryAtPath:templateDir attributes:nil];
+		[fm createDirectoryAtPath:templateDir withIntermediateDirectories:YES attributes:nil error:NULL];
 	}
 	
 	[templateDict writeToFile:productPath atomically:YES];
@@ -168,8 +172,8 @@
 	
 	NSFileManager *fm = [NSFileManager defaultManager];
 	NSString *supportDir = [@"~/Library/Application Support/Aquatic" stringByExpandingTildeInPath];
-	NSString *templateDir = [supportDir stringByAppendingString:@"/License Templates"];
-	NSString *productPath = [templateDir stringByAppendingString:[NSString stringWithFormat:@"/%@.plist", [productController currentProduct]]];
+	NSString *templateDir = [supportDir stringByAppendingPathComponent:@"License Templates"];
+	NSString *productPath = [[templateDir stringByAppendingPathComponent:[productController currentProduct]] stringByAppendingPathExtension:@"plist"];
 
 	if (![fm fileExistsAtPath:productPath])
 	{
@@ -287,7 +291,7 @@
 		[keyValueTable deleteItemAtIndex:[keyValueTable selectedRow]];
 }
 
-#pragma mark TableView Delegate Methods
+#pragma mark AQTableView Delegate Methods
 
 - (void)deleteItemAtIndex:(int)row
 {
@@ -295,15 +299,15 @@
 	[valueArray removeObjectAtIndex:row];
 	
 	// Make sure we don't lose a reference to the arrays
-	if (![keyArray count])
+	if ([keyArray count] == 0)
 		[keyArray retain];
-	if (![valueArray count])
+	if ([valueArray count] == 0)
 		[valueArray retain];
 	
 	[keyValueTable reloadData];
 	[keyValueTable selectRowIndexes:[NSIndexSet indexSetWithIndex:row-1] byExtendingSelection:NO];
 	
-	if (![keyArray count])
+	if ([keyArray count] == 0)
 		[generateLicenseButton setEnabled:NO];
 }
 
