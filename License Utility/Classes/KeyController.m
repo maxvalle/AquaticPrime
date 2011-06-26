@@ -109,8 +109,8 @@ static KeyController *sharedInstance = nil;
 	int productIndex;
 	for (productIndex = 0; productIndex < [products count]; productIndex++)
 	{
-		NSString *productPath = [[@"~/Library/Application Support/Aquatic/Product Keys" stringByExpandingTildeInPath] 
-								stringByAppendingString:[NSString stringWithFormat:@"/%@.plist", [products objectAtIndex:productIndex]]];
+		NSString *productPath = [[DATADIR_PATH stringByAppendingPathComponent:@"Product Keys"] 
+								stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.plist", [products objectAtIndex:productIndex]]];
 	
 		// Load the public key
 		NSData *pubData = [[NSDictionary dictionaryWithContentsOfFile:productPath] objectForKey:@"Public Key"];
@@ -149,9 +149,9 @@ static KeyController *sharedInstance = nil;
 	int curPos = 0;
 	
 	NSMutableString *pubConstruct = [NSMutableString stringWithString:@"\n\t// This string is specially constructed to prevent key replacement \
-	// *** Begin Public Key ***\n\tNSMutableString *key = [NSMutableString string];\n"];
-	
-	while ((lengthLeft - WINDOW_THRESH) > 0) {
+                                     // *** Begin Public Key ***\n\tCFMutableStringRef key = CFStringCreateMutable(NULL, 0);\n"];
+    
+    while ((lengthLeft - WINDOW_THRESH) > 0) {
 		// Logic to check for repeats
 		int repeated = 0;
 		char charBuf = 0;
@@ -160,12 +160,12 @@ static KeyController *sharedInstance = nil;
 			// We have a repeat!
 			if (charBuf == [pubKey characterAtIndex:i]) {
 				// Print up to repeat
-				[pubConstruct appendString:[NSString stringWithFormat:@"\t[key appendString:@\"%@\"];\n", [pubKey substringWithRange:NSMakeRange(curPos, (i-1) - curPos)]]];
+				[pubConstruct appendString:[NSString stringWithFormat:@"\tCFStringAppend(key, CFSTR(\"%@\"));\n", [pubKey substringWithRange:NSMakeRange(curPos, (i-1) - curPos)]]];
 				//Do the repeat
-				[pubConstruct appendString:[NSString stringWithFormat:@"\t[key appendString:@\"%@\"];\n", [pubKey substringWithRange:NSMakeRange(i-1, 1)]]];
-				[pubConstruct appendString:[NSString stringWithFormat:@"\t[key appendString:@\"%@\"];\n", [pubKey substringWithRange:NSMakeRange(i, 1)]]];
+				[pubConstruct appendString:[NSString stringWithFormat:@"\tCFStringAppend(key, CFSTR(\"%@\"));\n", [pubKey substringWithRange:NSMakeRange(i-1, 1)]]];
+				[pubConstruct appendString:[NSString stringWithFormat:@"\tCFStringAppend(key, CFSTR(\"%@\"));\n", [pubKey substringWithRange:NSMakeRange(i, 1)]]];
 				// Finish the line
-				[pubConstruct appendString:[NSString stringWithFormat:@"\t[key appendString:@\"%@\"];\n", [pubKey substringWithRange:NSMakeRange(i+1, (WINDOW_THRESH + curPos) - (i+1))]]];
+				[pubConstruct appendString:[NSString stringWithFormat:@"\tCFStringAppend(key, CFSTR(\"%@\"));\n", [pubKey substringWithRange:NSMakeRange(i+1, (WINDOW_THRESH + curPos) - (i+1))]]];
 				repeated = 1;
 				break;
 			}
@@ -173,12 +173,12 @@ static KeyController *sharedInstance = nil;
 		}
 		// No repeats
 		if (!repeated)
-			[pubConstruct appendString:[NSString stringWithFormat:@"\t[key appendString:@\"%@\"];\n", [pubKey substringWithRange:NSMakeRange(curPos, WINDOW_THRESH)]]];
+			[pubConstruct appendString:[NSString stringWithFormat:@"\tCFStringAppend(key, CFSTR(\"%@\"));\n", [pubKey substringWithRange:NSMakeRange(curPos, WINDOW_THRESH)]]];
 		
 		lengthLeft -= WINDOW_THRESH;
 		curPos += WINDOW_THRESH;
 	}
-	[pubConstruct appendString:[NSString stringWithFormat:@"\t[key appendString:@\"%@\"];\n\t// *** End Public Key *** \n", [pubKey substringWithRange:NSMakeRange(curPos, lengthLeft)]]];
+	[pubConstruct appendString:[NSString stringWithFormat:@"\tCFStringAppend(key, CFSTR(\"%@\"));\n\t// *** End Public Key *** \n", [pubKey substringWithRange:NSMakeRange(curPos, lengthLeft)]]];
 	
 	// Populate key view
 	[rsaKeyView setString:pubConstruct];
@@ -197,9 +197,8 @@ static KeyController *sharedInstance = nil;
 - (void)generateKeyForProduct:(NSString *)productName
 {
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString *supportDir = [@"~/Library/Application Support/Aquatic" stringByExpandingTildeInPath];
-	NSString *keyDir = [supportDir stringByAppendingString:@"/Product Keys"];
-	NSString *productPath = [keyDir stringByAppendingString:[NSString stringWithFormat:@"/%@.plist", productName]];
+	NSString *keyDir = [DATADIR_PATH stringByAppendingPathComponent:@"Product Keys"];
+	NSString *productPath = [keyDir stringByAppendingPathComponent:[NSString stringWithFormat:@"/%@.plist", productName]];
 	NSString *warningString = [NSString stringWithFormat:
 								@"Are you sure you want to generate a new key for %@?", productName];
 	
@@ -231,8 +230,8 @@ static KeyController *sharedInstance = nil;
 - (BOOL)loadKeysForProduct:(NSString *)productName
 {
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString *productPath = [[@"~/Library/Application Support/Aquatic/Product Keys" stringByExpandingTildeInPath] 
-								stringByAppendingString:[NSString stringWithFormat:@"/%@.plist", productName]];
+	NSString *productPath = [[DATADIR_PATH stringByAppendingPathComponent:@"Product Keys"] 
+								stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.plist", productName]];
 
 	// Generate a key if it doesn't exist
 	if (![fm fileExistsAtPath:productPath]) {
@@ -261,9 +260,9 @@ static KeyController *sharedInstance = nil;
 - (BOOL)saveKeysForProduct:(NSString *)productName
 {
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString *supportDir = [@"~/Library/Application Support/Aquatic" stringByExpandingTildeInPath];
-	NSString *keyDir = [supportDir stringByAppendingString:@"/Product Keys"];
-	NSString *productPath = [keyDir stringByAppendingString:[NSString stringWithFormat:@"/%@.plist", productName]];
+	NSString *supportDir = DATADIR_PATH;
+	NSString *keyDir = [supportDir stringByAppendingPathComponent:@"Product Keys"];
+	NSString *productPath = [keyDir stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.plist", productName]];
 	BOOL isDir;
 	NSData *pubData;
 	NSData *privData;
@@ -285,10 +284,10 @@ static KeyController *sharedInstance = nil;
 	// Create the dictionary
 	NSDictionary *keyDict = [NSDictionary dictionaryWithObjectsAndKeys: pubData, @"Public Key", privData, @"Private Key", nil];
 	
-	// The ~/Library/Application Support/Aquatic/ folder doesn't exist yet
+	// The data directory doesn't exist yet
 	if (![fm fileExistsAtPath:supportDir isDirectory:&isDir])
 	{
-		// Create the ~/Library/Application Support/Aquatic/ directory
+		// Create the data directory
 		[fm createDirectoryAtPath:supportDir withIntermediateDirectories:YES attributes:nil error:NULL];
 	}
 	// The support path leads to a file! Bad!
@@ -327,7 +326,7 @@ static KeyController *sharedInstance = nil;
 	
 	NSString *exportPath = [savePanel filename];
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString *productPath = [[NSString stringWithFormat:@"~/Library/Application Support/Aquatic/Product Keys/%@.plist", 
+	NSString *productPath = [[DATADIR_PATH stringByAppendingFormat:@"/Product Keys/%@.plist", 
 															[productController currentProduct]] stringByExpandingTildeInPath];
 																																
 	[fm copyItemAtPath:productPath toPath:exportPath error:NULL];
@@ -354,7 +353,7 @@ static KeyController *sharedInstance = nil;
 	}
 	
 	NSFileManager *fm = [NSFileManager defaultManager];
-	NSString *productPath = [[NSString stringWithFormat:@"~/Library/Application Support/Aquatic/Product Keys/%@.plist", 
+	NSString *productPath = [[DATADIR_PATH stringByAppendingFormat:@"/Product Keys/%@.plist", 
 															[keyPath lastPathComponent]] stringByExpandingTildeInPath];
 																																
 	[fm copyItemAtPath:keyPath toPath:productPath error:NULL];
