@@ -9,12 +9,13 @@
   */
   
 /**
-  * hex2bin
+  * Renamed hex2bin to ap_hex2bin to avoid Fatal error since PHP 5.4 has its own hex2bin function
+  * ap_hex2bin
   * Converts a hexadecimal string to binary
   * @param string Hex string
   * @return string Binary string
   */
-function hex2bin($hex) {
+function ap_hex2bin($hex) {
     if (strlen($hex) % 2)
         $hex = "0".$hex;
     
@@ -120,8 +121,16 @@ function getSignature($dict, $key, $privKey)
     
     // Escape apostrophes by un-quoting, adding apos, then re-quoting
     // so this turns ' into '\'' ... we have to double-slash for this php.
+
+    // Switch to UTF8 before otherwise escapeshellarg will strip out non-ASCII characters
+    $oldlocale =  setlocale(LC_CTYPE, 0);
+    setlocale(LC_CTYPE, "en_US.UTF-8");
+    
     $fixedApostrophes = escapeshellarg($total);
 
+    // restore localte
+    setlocale(LC_CTYPE, $oldlocale);
+    
     // This part is the most expensive below
     // We try to do it with native code first
     $aquatic_root = preg_replace('!((/[A-Za-z._-]+)+)/AquaticPrime\.php!', '$1', __FILE__);
@@ -159,7 +168,7 @@ function getSignature($dict, $key, $privKey)
 
         // Encrypt into a signature
         $sig = powmod($decryptedSig, hex2dec($privKey), hex2dec($key));
-        $sig = base64_encode(hex2bin(dec2hex($sig)));
+        $sig = base64_encode(ap_hex2bin(dec2hex($sig)));
     }
     return $sig;
 }
